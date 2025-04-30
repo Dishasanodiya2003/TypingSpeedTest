@@ -1,0 +1,197 @@
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import java.awt.*;
+import java.awt.event.*;
+import java.util.Random;
+
+public class TypingSpeedTestGUI extends JFrame {
+    private String[] sentences = {
+            "Java is a powerful programming language.",
+            "Typing speed improves with regular practice.",
+            "Artificial Intelligence is shaping the future.",
+            "Developers love solving complex problems."
+    };
+
+    private String targetSentence;
+    private JTextArea textArea;
+    private JLabel sentenceLabel, timerLabel, wpmLabel, accuracyLabel, countdownLabel;
+    private JButton restartButton;
+    private Timer timer, countdownTimer;
+    private int elapsedSeconds = 0;
+    private boolean started = false;
+    private int countdown = 3;
+
+    public TypingSpeedTestGUI() {
+        setTitle("Typing Speed Test");
+        setSize(750, 500);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+        setLayout(new BorderLayout(10, 10));
+        getContentPane().setBackground(new Color(240, 248, 255)); // Light blue background
+
+        // Font setup
+        Font titleFont = new Font("Georgia", Font.BOLD, 20);
+        Font resultFont = new Font("SansSerif", Font.BOLD, 16);
+
+        // Sentence label
+        targetSentence = sentences[new Random().nextInt(sentences.length)];
+        sentenceLabel = new JLabel(formatSentence(targetSentence));
+        sentenceLabel.setFont(titleFont);
+        sentenceLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        sentenceLabel.setBorder(new EmptyBorder(15, 15, 15, 15));
+        sentenceLabel.setForeground(new Color(25, 25, 112)); // Dark blue color
+
+        // Countdown label
+        countdownLabel = new JLabel("Get ready...", SwingConstants.CENTER);
+        countdownLabel.setFont(new Font("Verdana", Font.BOLD, 18));
+        countdownLabel.setForeground(new Color(255, 69, 0)); // Red-Orange color
+
+        // Typing area
+        textArea = new JTextArea("Start typing after countdown...");
+        textArea.setFont(new Font("Monospaced", Font.PLAIN, 16));
+        textArea.setLineWrap(true);
+        textArea.setWrapStyleWord(true);
+        textArea.setEditable(false);
+        textArea.setBorder(BorderFactory.createLineBorder(new Color(0, 0, 139), 2)); // Dark blue border
+        textArea.setBackground(new Color(255, 250, 250)); // Light pink background
+
+        // Timer labels
+        timerLabel = new JLabel("Time: 0 sec");
+        wpmLabel = new JLabel("WPM: 0");
+        accuracyLabel = new JLabel("Accuracy: 0%");
+        for (JLabel label : new JLabel[]{timerLabel, wpmLabel, accuracyLabel}) {
+            label.setFont(resultFont);
+            label.setForeground(new Color(0, 128, 0)); // Green color for results
+        }
+
+        JPanel resultPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
+        resultPanel.setBackground(new Color(240, 255, 240)); // Light green background
+        resultPanel.add(timerLabel);
+        resultPanel.add(wpmLabel);
+        resultPanel.add(accuracyLabel);
+
+        // Restart button
+        restartButton = new JButton("Restart");
+        restartButton.setFont(new Font("Arial", Font.BOLD, 14));
+        restartButton.setBackground(new Color(0, 123, 255)); // Blue background
+        restartButton.setForeground(Color.WHITE);
+        restartButton.addActionListener(e -> restartTest());
+
+        JPanel eastPanel = new JPanel();
+        eastPanel.setLayout(new BoxLayout(eastPanel, BoxLayout.Y_AXIS));
+        eastPanel.setBackground(new Color(240, 248, 255)); // Light blue background
+        eastPanel.add(Box.createVerticalGlue());
+        eastPanel.add(restartButton);
+        eastPanel.add(Box.createVerticalGlue());
+
+        // Timer for elapsed time
+        timer = new Timer(1000, e -> {
+            elapsedSeconds++;
+            timerLabel.setText("Time: " + elapsedSeconds + " sec");
+        });
+
+        // Countdown before typing starts
+        countdownTimer = new Timer(1000, e -> {
+            if (countdown == 0) {
+                countdownTimer.stop();
+                countdownLabel.setText("Go!");
+                textArea.setText("");
+                textArea.setEditable(true);
+                textArea.requestFocusInWindow();
+            } else {
+                countdownLabel.setText("Starting in: " + countdown);
+                countdown--;
+            }
+        });
+
+        // Typing listener
+        textArea.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyTyped(KeyEvent e) {
+                if (!started && textArea.isEditable()) {
+                    started = true;
+                    elapsedSeconds = 0;
+                    timer.start();
+                }
+            }
+
+            @Override
+            public void keyReleased(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    calculateResults();
+                }
+            }
+        });
+
+        // Layout setup
+        JPanel centerPanel = new JPanel(new BorderLayout(5, 5));
+        centerPanel.setBackground(new Color(240, 248, 255)); // Light blue background
+        centerPanel.add(countdownLabel, BorderLayout.NORTH);
+        centerPanel.add(new JScrollPane(textArea), BorderLayout.CENTER);
+
+        add(sentenceLabel, BorderLayout.NORTH);
+        add(centerPanel, BorderLayout.CENTER);
+        add(resultPanel, BorderLayout.SOUTH);
+        add(eastPanel, BorderLayout.EAST);
+
+        setVisible(true);
+        startCountdown();
+    }
+
+    private void startCountdown() {
+        countdown = 3;
+        countdownLabel.setText("Get ready...");
+        countdownTimer.start();
+    }
+
+    private void calculateResults() {
+        timer.stop();
+        String userInput = textArea.getText().trim();
+
+        String[] originalWords = targetSentence.split(" ");
+        String[] typedWords = userInput.split(" ");
+
+        int correctWords = 0;
+        for (int i = 0; i < Math.min(originalWords.length, typedWords.length); i++) {
+            if (originalWords[i].equals(typedWords[i])) {
+                correctWords++;
+            }
+        }
+
+        double wpm = (correctWords / (double) elapsedSeconds) * 60;
+        int correctChars = 0;
+        for (int i = 0; i < Math.min(targetSentence.length(), userInput.length()); i++) {
+            if (targetSentence.charAt(i) == userInput.charAt(i)) {
+                correctChars++;
+            }
+        }
+        double accuracy = ((double) correctChars / targetSentence.length()) * 100;
+
+        wpmLabel.setText("WPM: " + (int) wpm);
+        accuracyLabel.setText("Accuracy: " + (int) accuracy + "%");
+        textArea.setEditable(false);
+        countdownLabel.setText("Press Restart to try again.");
+    }
+
+    private void restartTest() {
+        timer.stop();
+        started = false;
+        elapsedSeconds = 0;
+        textArea.setText("Start typing after countdown...");
+        textArea.setEditable(false);
+        wpmLabel.setText("WPM: 0");
+        accuracyLabel.setText("Accuracy: 0%");
+        timerLabel.setText("Time: 0 sec");
+        targetSentence = sentences[new Random().nextInt(sentences.length)];
+        sentenceLabel.setText(formatSentence(targetSentence));
+        startCountdown();
+    }
+
+    private String formatSentence(String s) {
+        return "<html><div style='text-align: center;'>" + s + "</div></html>";
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(TypingSpeedTestGUI::new);
+    }
+}
